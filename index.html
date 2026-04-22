@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý TTTM</title>
+    <style>
+        :root {
+            --bg: #f5f1e8;
+            --panel: #fffaf2;
+            --border: #d8c9b6;
+            --text: #2f241d;
+            --muted: #6f6257;
+            --accent: #aa4a30;
+            --accent-dark: #8f3d28;
+            --danger: #9f2d2d;
+            --success: #1f6f43;
+            --shadow: 0 18px 40px rgba(70, 44, 22, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(170, 74, 48, 0.12), transparent 30%),
+                linear-gradient(180deg, #fbf7ef 0%, var(--bg) 100%);
+            overflow-x: hidden;
+        }
+
+        .app {
+            margin: 20px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+        }
+
+        .hero {
+            margin-bottom: 20px;
+        }
+
+        .hero h1,
+        .editor h2,
+        .table-panel h2 {
+            margin: 0 0 12px;
+        }
+
+        .hero p {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: end;
+            margin-top: 18px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        label {
+            font-weight: 600;
+        }
+
+        input,
+        select,
+        button {
+            font: inherit;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+        }
+
+        input:disabled {
+            background: #eee5d8;
+            color: var(--muted);
+        }
+
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        .primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .primary:hover {
+            background: var(--accent-dark);
+        }
+
+        .secondary {
+            background: #e7dccd;
+            color: var(--text);
+        }
+
+        .danger {
+            background: #f7dede;
+            color: var(--danger);
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+            gap: 16px;
+        }
+
+        .editor form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .editor,
+        .table-panel {
+            min-width: 0;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .hint {
+            margin-top: 10px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .status {
+            margin-top: 14px;
+            min-height: 24px;
+            font-weight: 600;
+        }
+
+        .status.info {
+            color: var(--muted);
+        }
+
+        .status.success {
+            color: var(--success);
+        }
+
+        .status.error {
+            color: var(--danger);
+        }
+
+        .table-wrap {
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: #fff;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee4d7;
+            white-space: normal;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f4ebde;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .empty {
+            color: var(--muted);
+            text-align: center;
+            padding: 24px;
+        }
+
+        @media (max-width: 980px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="app">
+        <section class="panel hero">
+            <h1>Quản lý TTTM</h1>
+            <p>Chọn bảng, thêm mới bản ghi, sửa trực tiếp trên form và xóa dữ liệu ngay trong danh sách.</p>
+
+            <div class="toolbar">
+                <div class="field">
+                    <label for="table">Bảng dữ liệu</label>
+                    <select id="table"></select>
+                </div>
+                <button id="reloadButton" class="secondary" type="button">Tải lại</button>
+                <button id="resetButton" class="secondary" type="button">Mẫu trắng</button>
+            </div>
+
+            <div id="status" class="status info"></div>
+        </section>
+
+        <section class="layout">
+            <section class="panel editor">
+                <h2 id="formTitle">Thêm dữ liệu</h2>
+                <form id="recordForm"></form>
+                <div class="editor-actions">
+                    <button id="saveButton" class="primary" type="button">Lưu dữ liệu</button>
+                    <button id="cancelButton" class="secondary" type="button">Hủy sửa</button>
+                </div>
+                <p class="hint" id="formHint">Form sẽ tự tạo theo cấu trúc bảng.</p>
+            </section>
+
+            <section class="panel table-panel">
+                <h2>Dữ liệu</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead id="head"></thead>
+                        <tbody id="data"></tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const API = "http://localhost:3000/api";
+        const TABLE_LABELS = {
+            Cua_Hang: "Cửa hàng",
+            Nhan_Vien: "Nhân viên",
+            Khach_Hang: "Khách hàng",
+            Hoa_Don: "Hóa đơn"
+        };
+
+        const state = {
+            currentTable: "",
+            columns: [],
+            rows: [],
+            primaryKey: null,
+            editingId: null
+        };
+
+        const tableSelect = document.getElementById("table");
+        const statusBox = document.getElementById("status");
+        const formTitle = document.getElementById("formTitle");
+        const formHint = document.getElementById("formHint");
+        const recordForm = document.getElementById("recordForm");
+        const tableHead = document.getElementById("head");
+        const tableBody = document.getElementById("data");
+
+        document.getElementById("reloadButton").addEventListener("click", loadCurrentTable);
+        document.getElementById("resetButton").addEventListener("click", resetForm);
+        document.getElementById("cancelButton").addEventListener("click", resetForm);
+        document.getElementById("saveButton").addEventListener("click", saveRecord);
+        tableSelect.addEventListener("change", loadCurrentTable);
+
+        init();
+
+        async function init() {
+            await loadTables();
+            await loadCurrentTable();
+        }
+
+        async function loadTables() {
+            const fallbackTables = Object.keys(TABLE_LABELS);
+            let tables = fallbackTables;
+
+            try {
+                const response = await fetch(`${API}/tables`);
+                const payload = await readJson(response);
+                if (response.ok && Array.isArray(payload.tables) && payload.tables.length) {
+                    tables = payload.tables;
+                }
+            } catch (error) {
+                setStatus("Không tải được danh sách bảng từ API, đang dùng danh sách mặc định.", "info");
+            }
+
+            tableSelect.innerHTML = "";
+            tables.forEach((table) => {
+                const option = document.createElement("option");
+                option.value = table;
+                option.textContent = TABLE_LABELS[table] || table;
+                tableSelect.appendChild(option);
+            });
+
+            state.currentTable = tableSelect.value;
+        }
+
+        async function loadCurrentTable() {
+            const table = tableSelect.value;
+            if (!table) {
+                return;
+            }
+
+            state.currentTable = table;
+            state.editingId = null;
+            setStatus(`Đang tải dữ liệu bảng ${table}...`, "info");
+
+            try {
+                const [metaResponse, dataResponse] = await Promise.all([
+                    fetch(`${API}/${encodeURIComponent(table)}/meta`),
+                    fetch(`${API}/${encodeURIComponent(table)}`)
+                ]);
+
+                const metaPayload = await readJson(metaResponse);
+                const dataPayload = await readJson(dataResponse);
+
+                if (!metaResponse.ok) {
+                    throw new Error(metaPayload.message || "Không lấy được cấu trúc bảng.");
+                }
+
+                if (!dataResponse.ok) {
+                    throw new Error(dataPayload.message || "Không lấy được dữ liệu bảng.");
+                }
+
+                state.columns = Array.isArray(metaPayload.columns) ? metaPayload.columns : [];
+                state.rows = Array.isArray(dataPayload) ? dataPayload : [];
+                state.primaryKey = getPrimaryKey(state.columns);
+
+                renderForm();
+                renderTable();
+                resetForm({ silent: true });
+                setStatus(`Đã tải ${state.rows.length} bản ghi từ bảng ${table}.`, "success");
+            } catch (error) {
+                state.columns = [];
+                state.rows = [];
+                state.primaryKey = null;
+                renderForm();
+                renderTable();
+                setStatus(error.message, "error");
+            }
+        }
+
+        function getPrimaryKey(columns) {
+            const keyColumn = columns.find((column) => column.key === "PRI");
+            return keyColumn ? keyColumn.name : columns[0]?.name || null;
+        }
+
+        function renderForm() {
+            recordForm.innerHTML = "";
+
+            if (!state.columns.length) {
+                formTitle.textContent = "Không có cấu trúc bảng";
+                formHint.textContent = "API chưa trả về cột nào để tạo form.";
+                return;
+            }
+
+            state.columns.forEach((column) => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "field";
+
+                const label = document.createElement("label");
+                label.setAttribute("for", `field-${column.name}`);
+                label.textContent = buildFieldLabel(column);
+
+                const input = document.createElement("input");
+                input.id = `field-${column.name}`;
+                input.name = column.name;
+                input.type = getInputType(column.type);
+                input.placeholder = column.name;
+                input.dataset.columnType = column.type;
+                input.dataset.nullable = String(column.nullable);
+                input.dataset.extra = column.extra || "";
+
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                recordForm.appendChild(wrapper);
+            });
+
+            formHint.textContent = state.primaryKey
+                ? `Khóa chính hiện tại: ${state.primaryKey}. Khi sửa, trường này sẽ bị khóa để tránh đổi mã.`
+                : "Không tìm thấy khóa chính, hệ thống sẽ dùng cột đầu tiên làm định danh.";
+            formTitle.textContent = "Thêm dữ liệu";
+        }
+
+        function renderTable() {
+            tableHead.innerHTML = "";
+            tableBody.innerHTML = "";
+
+            if (!state.columns.length) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 1;
+                cell.className = "empty";
+                cell.textContent = "Không có dữ liệu để hiển thị.";
+                row.appendChild(cell);
+                tableBody.appendChild(row);
+                return;
+            }
+
+            const headerRow = document.createElement("tr");
+            state.columns.forEach((column) => {
+                const th = document.createElement("th");
+                th.textContent = column.name;
+                headerRow.appendChild(th);
+            });
+
+            const actionHeader = document.createElement("th");
+            actionHeader.textContent = "Hành động";
+            headerRow.appendChild(actionHeader);
+            tableHead.appendChild(headerRow);
+
+            if (!state.rows.length) {
+                const emptyRow = document.createElement("tr");
+                const emptyCell = document.createElement("td");
+                emptyCell.colSpan = state.columns.length + 1;
+                emptyCell.className = "empty";
+                emptyCell.textContent = "Bảng đang trống. Bạn có thể thêm bản ghi mới ở form bên trái.";
+                emptyRow.appendChild(emptyCell);
+                tableBody.appendChild(emptyRow);
+                return;
+            }
+
+            state.rows.forEach((row, index) => {
+                const tr = document.createElement("tr");
+
+                state.columns.forEach((column) => {
+                    const td = document.createElement("td");
+                    const value = row[column.name];
+                    td.textContent = formatDisplayValue(column.type, value);
+                    tr.appendChild(td);
+                });
+
+                const actionCell = document.createElement("td");
+                const actionWrap = document.createElement("div");
+                actionWrap.className = "actions";
+
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "secondary";
+                editButton.textContent = "Sửa";
+                editButton.addEventListener("click", () => startEdit(index));
+
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.className = "danger";
+                deleteButton.textContent = "Xóa";
+                deleteButton.addEventListener("click", () => deleteRecord(index));
+
+                actionWrap.appendChild(editButton);
+                actionWrap.appendChild(deleteButton);
+                actionCell.appendChild(actionWrap);
+                tr.appendChild(actionCell);
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function startEdit(index) {
+            const row = state.rows[index];
+            if (!row) {
+                return;
+            }
+
+            state.editingId = row[state.primaryKey];
+            formTitle.textContent = "Sửa dữ liệu";
+
+            state.columns.forEach((column) => {
+                const input = document.getElementById(`field-${column.name}`);
+                if (!input) {
+                    return;
+                }
+
+                input.value = formatForInput(column.type, row[column.name]);
+                input.disabled = column.name === state.primaryKey;
+            });
+
+            setStatus(`Đang sửa bản ghi ${state.primaryKey}: ${state.editingId}`, "info");
+        }
+
+        function resetForm(options = {}) {
+            state.editingId = null;
+            formTitle.textContent = "Thêm dữ liệu";
+
+            state.columns.forEach((column) => {
+                const input = document.getElementById(`field-${column.name}`);
+                if (!input) {
+                    return;
+                }
+
+                input.value = "";
+                input.disabled = false;
+            });
+
+            if (!options.silent) {
+                setStatus("Đã đưa form về trạng thái thêm mới.", "info");
+            }
+        }
+
+        async function saveRecord() {
+            if (!state.columns.length) {
+                setStatus("Chưa có cấu trúc bảng để lưu dữ liệu.", "error");
+                return;
+            }
+
+            const validation = collectPayload();
+            if (validation.missingFields.length) {
+                setStatus(`Thiếu dữ liệu bắt buộc: ${validation.missingFields.join(", ")}`, "error");
+                return;
+            }
+
+            if (!Object.keys(validation.payload).length) {
+                setStatus("Không có dữ liệu hợp lệ để gửi.", "error");
+                return;
+            }
+
+            const isEditing = state.editingId !== null && state.editingId !== undefined;
+            const url = isEditing
+                ? `${API}/${encodeURIComponent(state.currentTable)}/${encodeURIComponent(state.primaryKey)}/${encodeURIComponent(state.editingId)}`
+                : `${API}/${encodeURIComponent(state.currentTable)}`;
+            const method = isEditing ? "PUT" : "POST";
+
+            try {
+                setStatus(isEditing ? "Đang cập nhật dữ liệu..." : "Đang thêm dữ liệu...", "info");
+
+                const response = await fetch(url, {
+                    method,
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(validation.payload)
+                });
+
+                const payload = await readJson(response);
+                if (!response.ok) {
+                    throw new Error(payload.message || "Lưu dữ liệu thất bại.");
+                }
+
+                await loadCurrentTable();
+                resetForm({ silent: true });
+                setStatus(payload.message || "Lưu dữ liệu thành công.", "success");
+            } catch (error) {
+                setStatus(error.message, "error");
+            }
+        }
+
+        async function deleteRecord(index) {
+            const row = state.rows[index];
+            if (!row || !state.primaryKey) {
+                return;
+            }
+
+            const id = row[state.primaryKey];
+            const confirmed = window.confirm(`Bạn có chắc muốn xóa bản ghi ${state.primaryKey} = ${id}?`);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                setStatus("Đang xóa dữ liệu...", "info");
+
+                const response = await fetch(
+                    `${API}/${encodeURIComponent(state.currentTable)}/${encodeURIComponent(state.primaryKey)}/${encodeURIComponent(id)}`,
+                    { method: "DELETE" }
+                );
+
+                const payload = await readJson(response);
+                if (!response.ok) {
+                    throw new Error(payload.message || "Xóa dữ liệu thất bại.");
+                }
+
+                await loadCurrentTable();
+                if (state.editingId === id) {
+                    resetForm({ silent: true });
+                }
+                setStatus(payload.message || "Xóa dữ liệu thành công.", "success");
+            } catch (error) {
+                setStatus(error.message, "error");
+            }
+        }
+
+        function collectPayload() {
+            const payload = {};
+            const missingFields = [];
+            const isEditing = state.editingId !== null && state.editingId !== undefined;
+
+            state.columns.forEach((column) => {
+                const input = document.getElementById(`field-${column.name}`);
+                if (!input) {
+                    return;
+                }
+
+                const rawValue = input.value.trim();
+                const isPrimaryKey = column.name === state.primaryKey;
+                const isAutoIncrement = (column.extra || "").toLowerCase().includes("auto_increment");
+                const hasDefault = column.defaultValue !== null && column.defaultValue !== undefined;
+                const shouldSkipEmptyCreateField = !isEditing && isAutoIncrement && rawValue === "";
+
+                if (shouldSkipEmptyCreateField) {
+                    return;
+                }
+
+                if (isEditing && isPrimaryKey) {
+                    return;
+                }
+
+                if (rawValue === "") {
+                    if (!column.nullable && !hasDefault && !isAutoIncrement) {
+                        missingFields.push(column.name);
+                        return;
+                    }
+
+                    if (column.nullable) {
+                        payload[column.name] = null;
+                    }
+
+                    return;
+                }
+
+                payload[column.name] = normalizeValue(column.type, rawValue);
+            });
+
+            return { payload, missingFields };
+        }
+
+        function buildFieldLabel(column) {
+            const parts = [column.name];
+            if (column.key === "PRI") {
+                parts.push("(PK)");
+            }
+            if (!(column.nullable)) {
+                parts.push("*");
+            }
+            return parts.join(" ");
+        }
+
+        function getInputType(type) {
+            const lower = String(type).toLowerCase();
+            if (lower.includes("datetime") || lower.includes("timestamp")) {
+                return "datetime-local";
+            }
+            if (lower === "date" || lower.startsWith("date(")) {
+                return "date";
+            }
+            if (lower === "time" || lower.startsWith("time(")) {
+                return "time";
+            }
+            if (["int", "decimal", "float", "double", "bigint", "smallint", "tinyint"].some((item) => lower.includes(item))) {
+                return "number";
+            }
+            return "text";
+        }
+
+        function formatForInput(type, value) {
+            if (value == null) {
+                return "";
+            }
+
+            const lower = String(type).toLowerCase();
+            if (lower === "date" || lower.startsWith("date(")) {
+                return String(value).slice(0, 10);
+            }
+            if (lower.includes("datetime") || lower.includes("timestamp")) {
+                const normalized = String(value).replace(" ", "T");
+                const date = new Date(normalized);
+                if (!Number.isNaN(date.getTime())) {
+                    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+                }
+                return normalized.slice(0, 16);
+            }
+
+            return String(value);
+        }
+
+        function formatDisplayValue(type, value) {
+            if (value == null || value === "") {
+                return "";
+            }
+
+            const raw = String(value);
+            const lower = String(type).toLowerCase();
+
+            if (lower === "date" || lower.startsWith("date(")) {
+                const date = new Date(raw);
+                if (!Number.isNaN(date.getTime())) {
+                    return date.toLocaleDateString("vi-VN");
+                }
+                return raw.slice(0, 10);
+            }
+
+            if (lower.includes("datetime") || lower.includes("timestamp")) {
+                const date = new Date(raw);
+                if (!Number.isNaN(date.getTime())) {
+                    return date.toLocaleString("vi-VN", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    });
+                }
+                return raw.replace("T", " ").replace(".000Z", "");
+            }
+
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(raw)) {
+                const date = new Date(raw);
+                if (!Number.isNaN(date.getTime())) {
+                    return date.toLocaleString("vi-VN", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit"
+                    });
+                }
+            }
+
+            return raw;
+        }
+
+        function normalizeValue(type, value) {
+            const lower = String(type).toLowerCase();
+            if (lower.includes("datetime") || lower.includes("timestamp")) {
+                return value.replace("T", " ") + ":00";
+            }
+            return value;
+        }
+
+        async function readJson(response) {
+            const text = await response.text();
+            if (!text) {
+                return {};
+            }
+
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                return { message: text };
+            }
+        }
+
+        function setStatus(message, type = "info") {
+            statusBox.textContent = message;
+            statusBox.className = `status ${type}`;
+        }
+    </script>
+</body>
+
+</html>
